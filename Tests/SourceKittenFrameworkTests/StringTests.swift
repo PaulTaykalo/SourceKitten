@@ -86,7 +86,8 @@ class StringTests: XCTestCase {
 
     func testIsTokenDocumentable() throws {
         let source = "struct A { subscript(key: String) -> Void { return () } }"
-        let actual = try SyntaxMap(file: File(contents: source)).tokens.filter(source.isTokenDocumentable)
+        let file = File(contents: source)
+        let actual = try SyntaxMap(file: file).tokens.filter(file.contents.isTokenDocumentable)
         let expected = [
             SyntaxToken(type: SyntaxKind.identifier.rawValue, offset: 7, length: 1), // `A`
             SyntaxToken(type: SyntaxKind.keyword.rawValue, offset: 11, length: 9),   // `subscript`
@@ -129,7 +130,7 @@ class StringTests: XCTestCase {
     func testGenerateDocumentedTokenOffsets() throws {
         let fileContents = "/// Comment\nlet global = 0"
         let syntaxMap = try SyntaxMap(file: File(contents: fileContents))
-        XCTAssertEqual(fileContents.documentedTokenOffsets(syntaxMap: syntaxMap), [16], "should generate documented token offsets")
+        XCTAssertEqual(fileContents.lilesContainer().documentedTokenOffsets(syntaxMap: syntaxMap), [16], "should generate documented token offsets")
     }
 
     func testDocumentedTokenOffsetsWithSubscript() throws {
@@ -141,37 +142,37 @@ class StringTests: XCTestCase {
     func testGenerateDocumentedTokenOffsetsEmpty() throws {
         let fileContents = "// Comment\nlet global = 0"
         let syntaxMap = try SyntaxMap(file: File(contents: fileContents))
-        XCTAssertEqual(fileContents.documentedTokenOffsets(syntaxMap: syntaxMap).count, 0, "shouldn't detect any documented token offsets when there are none")
+        XCTAssertEqual(fileContents.lilesContainer().documentedTokenOffsets(syntaxMap: syntaxMap).count, 0, "shouldn't detect any documented token offsets when there are none")
     }
 
     func testSubstringWithByteRange() {
         let string = "👨‍👩‍👧‍👧123"
-        XCTAssertEqual(string.bridge().substringWithByteRange(start: 0, length: 25)!, "👨‍👩‍👧‍👧")
-        XCTAssertEqual(string.bridge().substringWithByteRange(start: 25, length: 1)!, "1")
+        XCTAssertEqual(string.lilesContainer().substringWithByteRange(start: 0, length: 25)!, "👨‍👩‍👧‍👧")
+        XCTAssertEqual(string.lilesContainer().substringWithByteRange(start: 25, length: 1)!, "1")
     }
 
     func testSubstringLinesWithByteRange() {
         let string = "👨‍👩‍👧‍👧\n123"
-        XCTAssertEqual(string.bridge().substringLinesWithByteRange(start: 0, length: 0)!, "👨‍👩‍👧‍👧\n")
-        XCTAssertEqual(string.bridge().substringLinesWithByteRange(start: 0, length: 25)!, "👨‍👩‍👧‍👧\n")
-        XCTAssertEqual(string.bridge().substringLinesWithByteRange(start: 0, length: 26)!, "👨‍👩‍👧‍👧\n")
-        XCTAssertEqual(string.bridge().substringLinesWithByteRange(start: 0, length: 27)!, string)
-        XCTAssertEqual(string.bridge().substringLinesWithByteRange(start: 27, length: 0)!, "123")
+        XCTAssertEqual(string.lilesContainer().substringLinesWithByteRange(start: 0, length: 0)!, "👨‍👩‍👧‍👧\n")
+        XCTAssertEqual(string.lilesContainer().substringLinesWithByteRange(start: 0, length: 25)!, "👨‍👩‍👧‍👧\n")
+        XCTAssertEqual(string.lilesContainer().substringLinesWithByteRange(start: 0, length: 26)!, "👨‍👩‍👧‍👧\n")
+        XCTAssertEqual(string.lilesContainer().substringLinesWithByteRange(start: 0, length: 27)!, string)
+        XCTAssertEqual(string.lilesContainer().substringLinesWithByteRange(start: 27, length: 0)!, "123")
     }
 
     func testLineRangeWithByteRange() {
-        XCTAssert("".bridge().lineRangeWithByteRange(start: 0, length: 0) == nil)
+        XCTAssert("".lilesContainer().lineRangeWithByteRange(start: 0, length: 0) == nil)
         let string = "👨‍👩‍👧‍👧\n123"
-        XCTAssertEqual(string.bridge().lineRangeWithByteRange(start: 0, length: 0), (1, 1))
-        XCTAssertEqual(string.bridge().lineRangeWithByteRange(start: 0, length: 25), (1, 1))
-        XCTAssertEqual(string.bridge().lineRangeWithByteRange(start: 0, length: 26), (1, 2))
-        XCTAssertEqual(string.bridge().lineRangeWithByteRange(start: 0, length: 27), (1, 2))
-        XCTAssertEqual(string.bridge().lineRangeWithByteRange(start: 27, length: 0), (2, 2))
+        XCTAssertEqual(string.lilesContainer().lineRangeWithByteRange(start: 0, length: 0), (1, 1))
+        XCTAssertEqual(string.lilesContainer().lineRangeWithByteRange(start: 0, length: 25), (1, 1))
+        XCTAssertEqual(string.lilesContainer().lineRangeWithByteRange(start: 0, length: 26), (1, 2))
+        XCTAssertEqual(string.lilesContainer().lineRangeWithByteRange(start: 0, length: 27), (1, 2))
+        XCTAssertEqual(string.lilesContainer().lineRangeWithByteRange(start: 27, length: 0), (2, 2))
     }
 
     func testLineAndCharacterForByteOffset() {
         let string = "public typealias 🔳 = QRCode"
-        XCTAssertEqual(string.bridge().lineAndCharacter(forByteOffset: 17), (1, 18))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forByteOffset: 17), (1, 18))
     }
 
     func testByteRangeToNSRange() {
@@ -191,7 +192,7 @@ class StringTests: XCTestCase {
                 }
             }
             """
-        XCTAssertEqual(string.bridge().byteRangeToNSRange(start: 115, length: 41), NSRange(location: 115, length: 38))
+        XCTAssertEqual(string.lilesContainer().byteRangeToNSRange(start: 115, length: 41), NSRange(location: 115, length: 38))
     }
 
     func testLineAndCharacterForCharacterOffset() {
@@ -202,18 +203,18 @@ class StringTests: XCTestCase {
         "\ttest()\n" +     // t+  06+1 characters
         "}"
 
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 4, expandingTabsToWidth: 1), (1, 5))
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 17, expandingTabsToWidth: 1), (2, 5))
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 27 /* expandingTabsToWidth: default */), (3, 4))
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 27, expandingTabsToWidth: 1), (3, 4))
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 27, expandingTabsToWidth: 2), (3, 5))
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 27, expandingTabsToWidth: 4), (3, 5))
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 27, expandingTabsToWidth: 8), (3, 9))
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 35 /* tabWidth: default */), (4, 2))
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 35, expandingTabsToWidth: 1), (4, 2))
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 35, expandingTabsToWidth: 2), (4, 3))
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 35, expandingTabsToWidth: 4), (4, 5))
-        XCTAssertEqual(string.bridge().lineAndCharacter(forCharacterOffset: 35, expandingTabsToWidth: 8), (4, 9))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 4, expandingTabsToWidth: 1), (1, 5))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 17, expandingTabsToWidth: 1), (2, 5))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 27 /* expandingTabsToWidth: default */), (3, 4))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 27, expandingTabsToWidth: 1), (3, 4))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 27, expandingTabsToWidth: 2), (3, 5))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 27, expandingTabsToWidth: 4), (3, 5))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 27, expandingTabsToWidth: 8), (3, 9))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 35 /* tabWidth: default */), (4, 2))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 35, expandingTabsToWidth: 1), (4, 2))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 35, expandingTabsToWidth: 2), (4, 3))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 35, expandingTabsToWidth: 4), (4, 5))
+        XCTAssertEqual(string.lilesContainer().lineAndCharacter(forCharacterOffset: 35, expandingTabsToWidth: 8), (4, 9))
     }
 
     func testUnescaping() {

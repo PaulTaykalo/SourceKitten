@@ -34,7 +34,7 @@ struct RequestCommand: CommandProtocol {
 
             let yaml: String
             if let file = File(path: options.yaml) {
-                yaml = file.contents
+                yaml = file.contents.string
             } else {
                 yaml = options.yaml
             }

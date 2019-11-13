@@ -21,11 +21,11 @@ public final class File {
     /// File path. Nil if initialized directly with `File(contents:)`.
     public let path: String?
     /// File contents.
-    public var contents: String {
+    public var contents: StringLinesContainer {
         get {
             _contentsQueue.sync {
                 if _contents == nil {
-                    _contents = try! String(contentsOfFile: path!, encoding: .utf8)
+                    _contents = StringLinesContainer(try! String(contentsOfFile: path!, encoding: .utf8))
                 }
             }
             return _contents!
@@ -43,13 +43,13 @@ public final class File {
     public var lines: [Line] {
         _linesQueue.sync {
             if _lines == nil {
-                _lines = contents.bridge().lines()
+                _lines = contents.lines
             }
         }
         return _lines!
     }
 
-    private var _contents: String?
+    private var _contents: StringLinesContainer?
     private var _lines: [Line]?
     private let _contentsQueue = DispatchQueue(label: "com.sourcekitten.sourcekitten.file.contents")
     private let _linesQueue = DispatchQueue(label: "com.sourcekitten.sourcekitten.file.lines")
@@ -62,7 +62,7 @@ public final class File {
     public init?(path: String) {
         self.path = path.bridge().absolutePathRepresentation()
         do {
-            _contents = try String(contentsOfFile: path, encoding: .utf8)
+            _contents = StringLinesContainer(try String(contentsOfFile: path, encoding: .utf8))
         } catch {
             fputs("Could not read contents of `\(path)`\n", stderr)
             return nil
@@ -80,8 +80,20 @@ public final class File {
     */
     public init(contents: String) {
         path = nil
-        _contents = contents
+        _contents = StringLinesContainer(contents)
     }
+
+    /**
+    Initializer by file string container. File path is nil.
+
+    - parameter container: String container with file contents.
+    */
+    public init(container: StringLinesContainer) {
+        path = nil
+        _contents = container
+    }
+
+
 
     /// Formats the file.
     ///
@@ -95,7 +107,7 @@ public final class File {
                        useTabs: Bool,
                        indentWidth: Int) throws -> String {
         guard let path = path else {
-            return contents
+            return contents.string
         }
         _ = try Request.editorOpen(file: self).send()
         var newContents = [String]()
@@ -142,9 +154,9 @@ public final class File {
         }
         let substring: String?
         if let end = SwiftDocKey.getBodyOffset(dictionary) {
-            substring = contents.bridge().substringStartingLinesWithByteRange(start: start, length: Int(end) - start)
+            substring = contents.substringStartingLinesWithByteRange(start: start, length: Int(end) - start)
         } else {
-            substring = contents.bridge().substringLinesWithByteRange(start: start, length: 0)
+            substring = contents.substringLinesWithByteRange(start: start, length: 0)
         }
         return substring?.removingCommonLeadingWhitespaceFromLines()
                          .trimmingWhitespaceAndOpeningCurlyBrace()
@@ -169,7 +181,7 @@ public final class File {
                 }
             } ?? start
             let length = end - start
-            return contents.bridge().lineRangeWithByteRange(start: start, length: length)
+            return contents.lineRangeWithByteRange(start: start, length: length)
         }
     }
 
@@ -184,7 +196,7 @@ public final class File {
         precondition(SwiftDocKey.getKind(dictionary)! == SyntaxKind.commentMark.rawValue)
         let offset = Int(SwiftDocKey.getOffset(dictionary)!)
         let length = Int(SwiftDocKey.getLength(dictionary)!)
-        let fileContentsData = contents.data(using: .utf8)
+        let fileContentsData = contents.string.data(using: .utf8)
         let subdata = fileContentsData?.subdata(in: offset..<(offset + length))
         return subdata.flatMap { String(data: $0, encoding: .utf8) }
     }
@@ -410,8 +422,8 @@ public final class File {
            let commentRange = finder.getRangeForDeclaration(atOffset: Int(offset)),
            case let start = commentRange.lowerBound,
            case let end = commentRange.upperBound,
-           let nsRange = contents.bridge().byteRangeToNSRange(start: start, length: end - start),
-           let commentBody = contents.commentBody(range: nsRange) {
+           let nsRange = contents.byteRangeToNSRange(start: start, length: end - start),
+            let commentBody = contents.string.commentBody(range: nsRange) {
            dictionary[SwiftDocKey.documentationComment.rawValue] = commentBody
         }
 

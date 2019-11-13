@@ -15,7 +15,7 @@ class DocInfoTests: XCTestCase {
     func testDocInfoRequest() throws {
         let swiftFile = File(path: fixturesDirectory + "DocInfo.swift")!
         let info = toNSDictionary(
-            try Request.docInfo(text: swiftFile.contents, arguments: ["-sdk", sdkPath()]).send()
+            try Request.docInfo(text: swiftFile.contents.string, arguments: ["-sdk", sdkPath()]).send()
         )
         compareJSONString(withFixtureNamed: "DocInfo", jsonString: toJSON(info))
     }
