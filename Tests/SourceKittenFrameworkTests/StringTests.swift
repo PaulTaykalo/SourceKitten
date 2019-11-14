@@ -87,7 +87,7 @@ class StringTests: XCTestCase {
     func testIsTokenDocumentable() throws {
         let source = "struct A { subscript(key: String) -> Void { return () } }"
         let file = File(contents: source)
-        let actual = try SyntaxMap(file: file).tokens.filter(file.contents.isTokenDocumentable)
+        let actual = try SyntaxMap(file: file).tokens.filter(file.linesContainer.isTokenDocumentable)
         let expected = [
             SyntaxToken(type: SyntaxKind.identifier.rawValue, offset: 7, length: 1), // `A`
             SyntaxToken(type: SyntaxKind.keyword.rawValue, offset: 11, length: 9),   // `subscript`
@@ -136,7 +136,7 @@ class StringTests: XCTestCase {
     func testDocumentedTokenOffsetsWithSubscript() throws {
         let file = File(path: fixturesDirectory + "Subscript.swift")!
         let syntaxMap = try SyntaxMap(file: file)
-        XCTAssertEqual(file.contents.documentedTokenOffsets(syntaxMap: syntaxMap), [54], "should generate documented token offsets")
+        XCTAssertEqual(file.linesContainer.documentedTokenOffsets(syntaxMap: syntaxMap), [54], "should generate documented token offsets")
     }
 
     func testGenerateDocumentedTokenOffsetsEmpty() throws {

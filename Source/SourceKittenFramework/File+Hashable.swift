@@ -12,13 +12,13 @@ extension File: Hashable {
         case let (.some(lhsPath), .some(rhsPath)):
             return lhsPath == rhsPath
         case (.none, .none):
-            return lhs.contents.string == rhs.contents.string
+            return lhs.contents == rhs.contents
         default:
             return false
         }
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(path ?? contents.string)
+        hasher.combine(path ?? contents)
     }
 }

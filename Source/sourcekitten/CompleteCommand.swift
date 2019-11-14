@@ -45,7 +45,7 @@ struct CompleteCommand: CommandProtocol {
             guard let file = File(path: path) else {
                 return .failure(.readFailed(path: options.file))
             }
-            contents = file.contents.string
+            contents = file.contents
         } else {
             path = "\(NSUUID().uuidString).swift"
             contents = options.text

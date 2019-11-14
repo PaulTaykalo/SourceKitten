@@ -28,14 +28,14 @@ func compareJSONString(withFixtureNamed name: String,
 
     // Use if changes are introduced by changes in SourceKitten.
     let overwrite = ProcessInfo.processInfo.environment["OVERWRITE_FIXTURES"] != nil ? true : false
-    if overwrite && actualContent != expectedFile.contents.string {
+    if overwrite && actualContent != expectedFile.contents {
         _ = try? actualContent.data(using: .utf8)?.write(to: URL(fileURLWithPath: expectedFile.path!), options: [])
         return
     }
 
     // Use if changes are introduced by the new Swift version.
     let appendFixturesForNewSwiftVersion = ProcessInfo.processInfo.environment["APPEND_FIXTURES"] != nil ? true : false
-    if appendFixturesForNewSwiftVersion && actualContent != expectedFile.contents.string,
+    if appendFixturesForNewSwiftVersion && actualContent != expectedFile.contents,
         var path = expectedFile.path, let index = path.firstIndex(of: "@"),
         !path.hasSuffix("@\(buildingSwiftVersion).json") {
         path.replaceSubrange(index..<path.endIndex, with: "@\(buildingSwiftVersion).json")
@@ -54,9 +54,9 @@ func compareJSONString(withFixtureNamed name: String,
         fatalError()
     }
 
-    if jsonValue(actualContent) != jsonValue(expectedFile.contents.string) {
+    if jsonValue(actualContent) != jsonValue(expectedFile.contents) {
         XCTFail("output should match expected fixture", file: file, line: line)
-        print(diff(original: expectedFile.contents.string, modified: actualContent))
+        print(diff(original: expectedFile.contents, modified: actualContent))
     }
 }
 
