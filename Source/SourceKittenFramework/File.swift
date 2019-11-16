@@ -40,10 +40,10 @@ public final class File {
         }
     }
 
-    public var linesContainer: StringLinesContainer {
+    public var linesContainer: StringView {
         _linesQueue.sync {
             if _linesContainer == nil {
-                _linesContainer = StringLinesContainer(contents)
+                _linesContainer = StringView(contents)
             }
         }
         return _linesContainer!
@@ -55,7 +55,7 @@ public final class File {
 
     private var _contents: String?
     private var _lines: [Line]?
-    private var _linesContainer: StringLinesContainer?
+    private var _linesContainer: StringView?
     private let _contentsQueue = DispatchQueue(label: "com.sourcekitten.sourcekitten.file.contents")
     private let _linesQueue = DispatchQueue(label: "com.sourcekitten.sourcekitten.file.lines")
 

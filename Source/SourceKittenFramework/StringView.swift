@@ -47,13 +47,23 @@ private extension RandomAccessCollection {
 // https://developer.apple.com/library/content/documentation/Swift/Conceptual/Swift_Programming_Language/LexicalStructure.html#//apple_ref/swift/grammar/line-break
 private let newlinesCharacterSet = CharacterSet(charactersIn: "\u{000A}\u{000D}")
 
-/// Strucutre that precalculates lines for the specified string and then using this information in otder to perform fast
+/// Strucutre that precalculates lines for the specified string and then uses this information for
 /// ByteRange to NSRange and NSRange to ByteRange operations
-public struct StringLinesContainer {
+public struct StringView {
 
-    public let string: String
+
+    /// Reference to the NSString of represented string
     public let nsString: NSString
+
+    /// Full range of nsString
+    public let range: NSRange
+
+    /// Reference to the String of the represented strin
+    public let string: String
+
+    /// All lines of the original string
     public let lines: [Line]
+
     let utf8View: String.UTF8View
     let utf16View: String.UTF16View
 
@@ -68,6 +78,7 @@ public struct StringLinesContainer {
     private init(_ string: String, _ nsString: NSString) {
         self.string = string
         self.nsString = nsString
+        self.range = NSRange(location: 0, length: nsString.length)
 
         utf8View = string.utf8
         utf16View = string.utf16
@@ -114,64 +125,11 @@ public struct StringLinesContainer {
         self.lines = lines
     }
 
-    /**
-     Find integer offsets of documented Swift tokens in self.
-
-     - parameter syntaxMap: Syntax Map returned from SourceKit editor.open request.
-
-     - returns: Array of documented token offsets.
-     */
-    public func documentedTokenOffsets(syntaxMap: SyntaxMap) -> [Int] {
-        let documentableOffsets = syntaxMap.tokens.filter(isTokenDocumentable).map {
-            $0.offset
-        }
-
-        let regex = try! NSRegularExpression(pattern: "(///.*\\n|\\*/\\n)", options: []) // Safe to force try
-        let range = NSRange(location: 0, length: string.utf16.count)
-        let matches = regex.matches(in: string, options: [], range: range)
-
-        return matches.compactMap { match in
-            documentableOffsets.first { $0 >= match.range.location }
-        }
+    /// Returns substring in with UTF-16 range specified
+    /// - Parameter range: UTF16 Range
+    public func substring(with range: NSRange) -> String {
+        return nsString.substring(with: range)
     }
-
-
-    #if !os(Linux)
-    /// Returns the `#pragma mark`s in the string.
-    /// Just the content; no leading dashes or leading `#pragma mark`.
-    public func pragmaMarks(filename: String, excludeRanges: [NSRange], limit: NSRange?) -> [SourceDeclaration] {
-        let regex = try! NSRegularExpression(pattern: "(#pragma\\smark|@name)[ -]*([^\\n]+)", options: []) // Safe to force try
-        let range: NSRange
-        if let limit = limit {
-            range = NSRange(location: limit.location, length: min(utf16View.count - limit.location, limit.length))
-        } else {
-            range = NSRange(location: 0, length: utf16View.count)
-        }
-        let matches = regex.matches(in: string, options: [], range: range)
-
-        return matches.compactMap { match in
-            let markRange = match.range(at: 2)
-            for excludedRange in excludeRanges {
-                if NSIntersectionRange(excludedRange, markRange).length > 0 {
-                    return nil
-                }
-            }
-            let markString = nsString.substring(with: markRange).trimmingCharacters(in: .whitespaces)
-            if markString.isEmpty {
-                return nil
-            }
-            guard let markByteRange = self.NSRangeToByteRange(start: markRange.location, length: markRange.length) else {
-                return nil
-            }
-            let location = SourceLocation(file: filename,
-                                          line: UInt32(lineRangeWithByteRange(start: markByteRange.location, length: 0)!.start),
-                                          column: 1, offset: UInt32(markByteRange.location))
-            return SourceDeclaration(type: .mark, location: location, extent: (location, location), name: markString,
-                                     usr: nil, declaration: nil, documentation: nil, commentBody: nil, children: [],
-                                     annotations: nil, swiftDeclaration: nil, swiftName: nil, availability: nil)
-        }
-    }
-    #endif
 
     #if !os(Linux)
     /**
@@ -190,6 +148,13 @@ public struct StringLinesContainer {
      */
     public func substringWithByteRange(start: Int, length: Int) -> String? {
         return byteRangeToNSRange(start: start, length: length).map(nsString.substring)
+    }
+
+
+    /// Returns a substictg, started at UTF-16 location
+    /// - Parameter location: UTF-16 location
+    func substring(from location: Int) -> String {
+        return nsString.substring(from: location)
     }
 
     /**
@@ -260,7 +225,6 @@ public struct StringLinesContainer {
         let startUTF16Index = utf16View.index(utf16View.startIndex, offsetBy: start)
         let endUTF16Index = utf16View.index(startUTF16Index, offsetBy: length)
 
-        let utf8View = string.utf8
         guard let startUTF8Index = startUTF16Index.samePosition(in: utf8View),
             let endUTF8Index = endUTF16Index.samePosition(in: utf8View) else {
                 return nil
@@ -406,6 +370,10 @@ public struct StringLinesContainer {
         }
     }
 
+}
+
+public extension StringView {
+
     /**
      Returns whether or not the `token` can be documented. Either because it is a
      `SyntaxKind.Identifier` or because it is a function treated as a `SyntaxKind.Keyword`:
@@ -416,7 +384,7 @@ public struct StringLinesContainer {
 
      - parameter token: Token to process.
      */
-    public func isTokenDocumentable(token: SyntaxToken) -> Bool {
+    func isTokenDocumentable(token: SyntaxToken) -> Bool {
         if token.type == SyntaxKind.keyword.rawValue {
             let keywordFunctions = ["subscript", "init", "deinit"]
             return substringWithByteRange(start: token.offset, length: token.length)
@@ -425,18 +393,67 @@ public struct StringLinesContainer {
         return token.type == SyntaxKind.identifier.rawValue
     }
 
+    #if !os(Linux)
+    /// Returns the `#pragma mark`s in the string.
+    /// Just the content; no leading dashes or leading `#pragma mark`.
+    func pragmaMarks(filename: String, excludeRanges: [NSRange], limit: NSRange?) -> [SourceDeclaration] {
+        let regex = try! NSRegularExpression(pattern: "(#pragma\\smark|@name)[ -]*([^\\n]+)", options: []) // Safe to force try
+        let range: NSRange
+        if let limit = limit {
+            range = NSRange(location: limit.location, length: min(utf16View.count - limit.location, limit.length))
+        } else {
+            range = NSRange(location: 0, length: utf16View.count)
+        }
+        let matches = regex.matches(in: string, options: [], range: range)
+
+        return matches.compactMap { match in
+            let markRange = match.range(at: 2)
+            for excludedRange in excludeRanges {
+                if NSIntersectionRange(excludedRange, markRange).length > 0 {
+                    return nil
+                }
+            }
+            let markString = nsString.substring(with: markRange).trimmingCharacters(in: .whitespaces)
+            if markString.isEmpty {
+                return nil
+            }
+            guard let markByteRange = self.NSRangeToByteRange(start: markRange.location, length: markRange.length) else {
+                return nil
+            }
+            let location = SourceLocation(file: filename,
+                                          line: UInt32(lineRangeWithByteRange(start: markByteRange.location, length: 0)!.start),
+                                          column: 1, offset: UInt32(markByteRange.location))
+            return SourceDeclaration(type: .mark, location: location, extent: (location, location), name: markString,
+                                     usr: nil, declaration: nil, documentation: nil, commentBody: nil, children: [],
+                                     annotations: nil, swiftDeclaration: nil, swiftName: nil, availability: nil)
+        }
+    }
+    #endif
+
+    /**
+     Find integer offsets of documented Swift tokens in self.
+
+     - parameter syntaxMap: Syntax Map returned from SourceKit editor.open request.
+
+     - returns: Array of documented token offsets.
+     */
+    func documentedTokenOffsets(syntaxMap: SyntaxMap) -> [Int] {
+        let documentableOffsets = syntaxMap.tokens.filter(isTokenDocumentable).map {
+            $0.offset
+        }
+
+        let regex = try! NSRegularExpression(pattern: "(///.*\\n|\\*/\\n)", options: []) // Safe to force try
+        let range = NSRange(location: 0, length: string.utf16.count)
+        let matches = regex.matches(in: string, options: [], range: range)
+
+        return matches.compactMap { match in
+            documentableOffsets.first { $0 >= match.range.location }
+        }
+    }
 }
 
 
 extension String {
-
-    /**
-     Creates a string container for specified string
-     In general, this is good idea to cache string Line Containers for identical strings
-     */
-    public func lilesContainer() -> StringLinesContainer {
-        return StringLinesContainer(self)
-    }
 
     /// Returns a copy of the string by trimming whitespace and the opening curly brace (`{`).
     internal func trimmingWhitespaceAndOpeningCurlyBrace() -> String? {
