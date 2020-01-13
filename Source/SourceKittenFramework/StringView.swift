@@ -138,9 +138,19 @@ public struct StringView {
      - parameter start: Starting byte offset.
      - parameter length: Length of bytes to include in range.
      */
+    public func substringWithByteRange(start: ByteCount, length: ByteCount) -> String? {
+        return byteRangeToNSRange(ByteRange(location: start, length: length)).map(nsString.substring)
+    }
+
+    /**
+     Returns a substring with the provided byte range.
+
+     - parameter byteRange: Byte range to include in string.
+     */
     public func substringWithByteRange(_ byteRange: ByteRange) -> String? {
         return byteRangeToNSRange(byteRange).map(nsString.substring)
     }
+
 
     /// Returns a substictg, started at UTF-16 location.
     ///
@@ -155,6 +165,18 @@ public struct StringView {
 
      - parameter start: Starting byte offset.
      - parameter length: Length of bytes to include in range.
+
+     - returns: An equivalent `NSRange`.
+     */
+    public func byteRangeToNSRange(start: ByteCount, length: ByteCount) -> NSRange? {
+        return byteRangeToNSRange(ByteRange(location: start, length: length))
+    }
+
+    /**
+     Converts a range of byte offsets in `self` to an `NSRange` suitable for filtering `self` as an
+     `NSString`.
+
+     - parameter byteRange: byteRange to convert.
 
      - returns: An equivalent `NSRange`.
      */
@@ -293,6 +315,14 @@ public struct StringView {
 
      - parameter start: Starting byte offset.
      - parameter length: Length of bytes to include in range.
+     */
+    public func lineRangeWithByteRange(start: ByteCount, length: ByteCount) -> (start: Int, end: Int)? {
+        return lineRangeWithByteRange(ByteRange(location: start, length: length))
+    }
+
+    /**
+     Returns line numbers containing specified bytes range.
+     - parameter byteRange: byte range to include in range.
      */
     public func lineRangeWithByteRange(_ byteRange: ByteRange) -> (start: Int, end: Int)? {
         return byteRangeToNSRange(byteRange).flatMap { range in
