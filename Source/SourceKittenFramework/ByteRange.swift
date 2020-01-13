@@ -26,12 +26,12 @@ public struct ByteRange: Equatable {
     }
 
     /// The range's upper bound.
-    var upperBound: ByteCount {
+    public var upperBound: ByteCount {
         return location + length
     }
 
     /// The range's lower bound.
-    var lowerBound: ByteCount {
+    public var lowerBound: ByteCount {
         return location
     }
 }
